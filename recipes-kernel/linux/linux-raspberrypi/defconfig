@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 #
 # Automatically generated file; DO NOT EDIT.
 # Linux/arm 3.10.30 Kernel Configuration
@@ -3673,3 +3674,6 @@ CONFIG_AVERAGE=y
 # CONFIG_DDR is not set
 CONFIG_OID_REGISTRY=y
 # CONFIG_VIRTUALIZATION is not set
+=======
+# Dummy file to get through do_kernel_configme.
+>>>>>>> upstream/master

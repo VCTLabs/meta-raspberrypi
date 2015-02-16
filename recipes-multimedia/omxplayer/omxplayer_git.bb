@@ -15,6 +15,7 @@ SRC_URI = "git://github.com/popcornmix/omxplayer.git;protocol=git;branch=master 
            file://0001-Remove-Makefile.include-which-includes-hardcoded.patch \
            file://0002-Libraries-and-headers-from-ffmpeg-are-installed-in-u.patch \
            file://0003-Remove-strip-step-in-Makefile.patch \
+           file://0004-Add-FFMPEG_EXTRA_CFLAGS-and-FFMPEG_EXTRA_LDFLAGS.patch \
            file://fix-tar-command-with-DIST.patch \
            "
 S = "${WORKDIR}/git"
@@ -30,12 +31,14 @@ export TEMPDIR = "${S}/tmp"
 export HOST = "${HOST_SYS}"
 export WORK = "${S}"
 export FLOAT = "${@bb.utils.contains("TUNE_FEATURES", "callconvention-hard", "hard", "softfp", d)}"
+export FFMPEG_EXTRA_CFLAGS  = "--sysroot=${STAGING_DIR_TARGET}"
+export FFMPEG_EXTRA_LDFLAGS = "--sysroot=${STAGING_DIR_TARGET}"
 
+# Needed in top Makefile
 export LDFLAGS = "-L${S}/ffmpeg_compiled/usr/lib \
                   -L${STAGING_DIR_HOST}/lib \
                   -L${STAGING_DIR_HOST}/usr/lib \
                  "
-
 export INCLUDES = "-isystem${STAGING_DIR_HOST}/usr/include \
                    -isystem${STAGING_DIR_HOST}/usr/include/interface/vcos/pthreads \
                    -isystem${STAGING_DIR_HOST}/usr/include/freetype2 \
@@ -43,8 +46,6 @@ export INCLUDES = "-isystem${STAGING_DIR_HOST}/usr/include \
                    -isystem${STAGING_DIR_HOST}/usr/include/dbus-1.0 \
                    -isystem${STAGING_DIR_HOST}/usr/lib/dbus-1.0/include \
                   "
-
-# Install in ${D}
 export DIST = "${D}"
 
 do_compile() {

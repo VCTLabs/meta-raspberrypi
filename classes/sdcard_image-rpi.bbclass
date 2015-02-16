@@ -31,6 +31,10 @@ IMAGE_BOOTLOADER ?= "bcm2835-bootfiles"
 # Set initramfs extension
 KERNEL_INITRAMFS ?= ""
 
+# Kernel image name
+SDIMG_KERNELIMAGE_raspberrypi  ?= "kernel.img"
+SDIMG_KERNELIMAGE_raspberrypi2 ?= "kernel7.img"
+
 # Boot partition volume id
 BOOTDD_VOLUME_ID ?= "${MACHINE}"
 
@@ -50,7 +54,7 @@ IMAGE_DEPENDS_rpi-sdimg = " \
 			dosfstools-native \
 			virtual/kernel \
 			${IMAGE_BOOTLOADER} \
-			${@base_contains("KERNEL_IMAGETYPE", "uImage", "u-boot", "",d)} \
+			${@bb.utils.contains('KERNEL_IMAGETYPE', 'uImage', 'u-boot', '',d)} \
 			"
 
 # SD card image name
@@ -65,6 +69,11 @@ SDIMG = "${DEPLOY_DIR_IMAGE}/${IMAGE_NAME}.rootfs.rpi-sdimg"
 
 # Additional files and/or directories to be copied into the vfat partition from the IMAGE_ROOTFS.
 FATPAYLOAD ?= ""
+
+# Device Tree Overlays are assumed to be suffixed by '-overlay.dtb' string and will be put in a dedicated folder
+DT_ALL = "${@d.getVar('KERNEL_DEVICETREE', True) or ''}"
+DT_OVERLAYS = "${@oe.utils.str_filter('\S+\-overlay\.dtb$', '${DT_ALL}', d)}"
+DT_ROOT = "${@oe.utils.str_filter_out('\S+\-overlay\.dtb$', '${DT_ALL}', d)}"
 
 IMAGEDATESTAMP = "${@time.strftime('%Y.%m.%d',time.gmtime())}"
 
@@ -99,12 +108,28 @@ IMAGE_CMD_rpi-sdimg () {
 	mcopy -i ${WORKDIR}/boot.img -s ${DEPLOY_DIR_IMAGE}/bcm2835-bootfiles/* ::/
 	case "${KERNEL_IMAGETYPE}" in
 	"uImage")
-	    mcopy -i ${WORKDIR}/boot.img -s ${DEPLOY_DIR_IMAGE}/u-boot.img ::kernel.img
-	    mcopy -i ${WORKDIR}/boot.img -s ${DEPLOY_DIR_IMAGE}/${KERNEL_IMAGETYPE}${KERNEL_INITRAMFS}-${MACHINE}.bin ::uImage
-	    ;;
+		mcopy -i ${WORKDIR}/boot.img -s ${DEPLOY_DIR_IMAGE}/u-boot.img ::${SDIMG_KERNELIMAGE}
+		mcopy -i ${WORKDIR}/boot.img -s ${DEPLOY_DIR_IMAGE}/${KERNEL_IMAGETYPE}${KERNEL_INITRAMFS}-${MACHINE}.bin ::uImage
+		;;
 	*)
-	    mcopy -i ${WORKDIR}/boot.img -s ${DEPLOY_DIR_IMAGE}/${KERNEL_IMAGETYPE}${KERNEL_INITRAMFS}-${MACHINE}.bin ::kernel.img
-	    ;;
+		if test -n "${KERNEL_DEVICETREE}"; then
+			# Copy board device trees to root folder
+			for DTB in ${DT_ROOT}; do
+				DTB_BASE_NAME=`basename ${DTB} .dtb`
+
+				mcopy -i ${WORKDIR}/boot.img -s ${DEPLOY_DIR_IMAGE}/${KERNEL_IMAGETYPE}-${DTB_BASE_NAME}.dtb ::${DTB_BASE_NAME}.dtb
+			done
+
+			# Copy device tree overlays to dedicated folder
+			mmd -i ${WORKDIR}/boot.img overlays
+			for DTB in ${DT_OVERLAYS}; do
+				DTB_BASE_NAME=`basename ${DTB} .dtb`
+
+				mcopy -i ${WORKDIR}/boot.img -s ${DEPLOY_DIR_IMAGE}/${KERNEL_IMAGETYPE}-${DTB_BASE_NAME}.dtb ::overlays/${DTB_BASE_NAME}.dtb
+			done
+		fi
+		mcopy -i ${WORKDIR}/boot.img -s ${DEPLOY_DIR_IMAGE}/${KERNEL_IMAGETYPE}${KERNEL_INITRAMFS}-${MACHINE}.bin ::${SDIMG_KERNELIMAGE}
+		;;
 	esac
 
 	if [ -n ${FATPAYLOAD} ] ; then
