@@ -1,6 +1,5 @@
 # RaspberryPi BSP default providers
 
-<<<<<<< HEAD
 PREFERRED_PROVIDER_virtual/kernel ?= "linux-raspberrypi"
 PREFERRED_PROVIDER_u-boot ?= "u-boot-rpi"
 
