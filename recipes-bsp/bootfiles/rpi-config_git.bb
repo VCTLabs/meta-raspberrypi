@@ -13,7 +13,7 @@ SRC_URI = "git://github.com/Evilpaul/RPi-config.git;protocol=git;branch=master \
 
 S = "${WORKDIR}/git"
 
-PR = "r4"
+PR = "r5"
 
 PITFT="${@bb.utils.contains("MACHINE_FEATURES", "pitft", "1", "0", d)}"
 PITFT22="${@bb.utils.contains("MACHINE_FEATURES", "pitft22", "1", "0", d)}"
@@ -72,6 +72,12 @@ do_deploy() {
     if [ -n "${DISPMANX_OFFLINE}" ]; then
         echo "# Enable offline compositing" >>${DEPLOYDIR}/bcm2835-bootfiles/config.txt
         echo "dispmanx_offline=1" >>${DEPLOYDIR}/bcm2835-bootfiles/config.txt
+    fi
+
+    # Color depth
+    if [ -n "${FRAMEBUFFER_DEPTH}" ]; then
+        echo "# Color depth" >>${DEPLOYDIR}/bcm2835-bootfiles/config.txt
+        echo "framebuffer_depth=${FRAMEBUFFER_DEPTH}" >>${DEPLOYDIR}/bcm2835-bootfiles/config.txt
     fi
 
     # SPI bus support
