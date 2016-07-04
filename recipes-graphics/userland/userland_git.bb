@@ -2,42 +2,74 @@ DESCRIPTION = "This repository contains the source code for the ARM side \
 libraries used on Raspberry Pi. These typically are installed in /opt/vc/lib \
 and includes source for the ARM side code to interface to: EGL, mmal, GLESv2,\
 vcos, openmaxil, vchiq_arm, bcm_host, WFC, OpenVG."
-LICENSE = "Broadcom"
-LIC_FILES_CHKSUM = "file://LICENCE;md5=957f6640d5e2d2acfce73a36a56cb32f"
+LICENSE = "BSD-3-Clause"
+LIC_FILES_CHKSUM = "file://LICENCE;md5=0448d6488ef8cc380632b1569ee6d196"
 
-PR = "r4"
+PR = "r5"
 
 PROVIDES = "virtual/libgles1 \
             virtual/libgles2 \
             virtual/egl"
 
+RPROVIDES_${PN} += "libgles2 libgl"
+
 COMPATIBLE_MACHINE = "raspberrypi"
 
 SRCBRANCH = "master"
 SRCFORK = "raspberrypi"
-SRCREV = "85441185e653347e6b3c2bbc7494f5e29a6ca4a2"
+SRCREV = "17c28b9d1d234893b73adeb95efc4959b617fc85"
 
-SRC_URI = "git://github.com/${SRCFORK}/userland.git;protocol=git;branch=${SRCBRANCH} \
-          "
+SRC_URI = "\
+    git://github.com/${SRCFORK}/userland.git;protocol=git;branch=${SRCBRANCH} \
+    file://0002-cmake-generate-and-install-pkgconfig-files.patch \
+    file://0003-Allow-applications-to-set-next-resource-handle.patch \
+    file://0004-wayland-Add-support-for-the-Wayland-winsys.patch \
+    file://0005-wayland-Add-Wayland-example.patch \
+    file://0006-wayland-egl-Add-bcm_host-to-dependencies.patch \
+    file://0007-interface-remove-faulty-assert-to-make-weston-happy-.patch \
+    file://0008-zero-out-wl-buffers-in-egl_surface_free.patch \
+    file://0009-initialize-front-back-wayland-buffers.patch \
+    file://0010-Remove-RPC_FLUSH.patch \
+    file://0011-fix-cmake-dependency-race.patch \
+    file://0012-Fix-enum-conversion-warnings.patch \
+    file://0013-Fix-for-framerate-with-nested-composition.patch \
+    file://0014-build-shared-library-for-vchostif.patch \
+    file://0015-wl-dispmanx-buffer-wrapping.patch \
+"
 S = "${WORKDIR}/git"
 
-inherit cmake
+inherit cmake pkgconfig
 
-EXTRA_OECMAKE = "-DCMAKE_BUILD_TYPE=Release -DCMAKE_EXE_LINKER_FLAGS='-Wl,--no-as-needed'"
+EXTRA_OECMAKE = "-DCMAKE_BUILD_TYPE=Release -DCMAKE_EXE_LINKER_FLAGS='-Wl,--no-as-needed' \
+                 -DVMCS_INSTALL_PREFIX=${exec_prefix} \
+"
 
-# The compiled binaries don't provide sonames.
-SOLIBS = "${SOLIBSDEV}"
+PACKAGECONFIG ?= "${@bb.utils.contains('DISTRO_FEATURES', 'wayland', 'wayland', '', d)}"
 
-do_install_append() {
-    mkdir -p ${D}/${prefix}
-    mv ${D}/opt/vc/* ${D}/${prefix}
-    rm -rf ${D}/opt
+PACKAGECONFIG[wayland] = "-DBUILD_WAYLAND=TRUE -DWAYLAND_SCANNER_EXECUTABLE:FILEPATH=${STAGING_BINDIR_NATIVE}/wayland-scanner,,wayland-native wayland"
+
+CFLAGS_append = " -fPIC"
+
+do_install_append () {
+	for f in `find ${D}${includedir}/interface/vcos/ -name "*.h"`; do
+		sed -i 's/include "vcos_platform.h"/include "pthreads\/vcos_platform.h"/g' ${f}
+		sed -i 's/include "vcos_futex_mutex.h"/include "pthreads\/vcos_futex_mutex.h"/g' ${f}
+		sed -i 's/include "vcos_platform_types.h"/include "pthreads\/vcos_platform_types.h"/g' ${f}
+	done
 }
 
-FILES_${PN} += "${libdir}/*${SOLIBS}"
-FILES_${PN}-dev = "${includedir} \
+# Shared libs from userland package  build aren't versioned, so we need
+# to force the .so files into the runtime package (and keep them
+# out of -dev package).
+FILES_SOLIBSDEV = ""
+INSANE_SKIP_${PN} += "dev-so"
+
+FILES_${PN} += " \
+    ${libdir}/*.so \
+    ${libdir}/plugins"
+FILES_${PN}-dev += "${includedir} \
                    ${prefix}/src"
 FILES_${PN}-doc += "${datadir}/install"
+FILES_${PN}-dbg += "${libdir}/plugins/.debug"
 
 PACKAGE_ARCH = "${MACHINE_ARCH}"
-

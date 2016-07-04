@@ -10,10 +10,18 @@ RDEPENDS_${PN} = "\
     wiringpi \
     rpio \
     rpi-gpio \
+    pi-blaster \
+    python-rtimu \
+    python-sense-hat \
+    connman \
+    connman-client \
+    crda \
+    bluez5 \
 "
 
 RRECOMMENDS_${PN} = "\
     bigbuckbunny-1080p \
     bigbuckbunny-480p \
     bigbuckbunny-720p \
+    ${MACHINE_EXTRA_RRECOMMENDS} \
 "
